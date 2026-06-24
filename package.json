@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "dev:sim": "ts-node -e \"process.env.SIMULATE='true'; require('./src/index.ts')\""
   },
   "keywords": ["tesla", "wall-connector", "monitor", "whatsapp", "telegram"],
   "license": "MIT",

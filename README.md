@@ -11,6 +11,7 @@ Monitor a fleet of Tesla Wall Connectors (Gen 3) and receive alerts via **WhatsA
 - 📊 **Web Dashboard** — Real-time fleet status at `http://localhost:3000`
 - 🗄️ **Alert History** — SQLite database with full alert and notification log
 - 🐳 **Docker Ready** — docker-compose with persistent volumes
+- 🧪 **Simulation Mode** — Test the dashboard and alerts without real hardware
 
 ## Quick Start
 
@@ -41,6 +42,30 @@ npm run build
 npm start
 ```
 
+### 4. Run in Simulation Mode (No Hardware Needed)
+
+Simulation mode generates realistic fake connector data so you can test the dashboard, alerts, and notifications without physical Wall Connectors.
+
+```bash
+# Option A: Use the dev:sim script
+npm run dev:sim
+
+# Option B: Set environment variable
+# Linux/macOS:
+SIMULATE=true npm run dev
+# Windows (PowerShell):
+$env:SIMULATE="true"; npm run dev
+
+# Option C: Enable in config/config.yaml
+# simulation:
+#   enabled: true
+```
+
+The simulator creates 4 virtual connectors (configurable) that cycle through states — idle, connected, charging, faults, offline — generating alerts as they transition. Open `http://localhost:3000` to see the dashboard in action.
+
+![Simulation Mode Dashboard](docs/simulation-dashboard.png)
+*Dashboard running in simulation mode — 4 virtual connectors with live state transitions and alerts.*
+
 ## Configuration
 
 ### Wall Connectors
@@ -55,6 +80,8 @@ wall_connectors:
 ```
 
 **Finding the IP:** Check your router's DHCP client list, or use `nmap -sn 192.168.1.0/24`.
+
+> **Note:** When simulation mode is enabled, `wall_connectors` can be empty — the simulator generates its own virtual connectors.
 
 ### Alert Thresholds
 
@@ -89,6 +116,30 @@ notification_groups:
     alerts: ["all"]
     severity_filter: "info"
 ```
+
+### Simulation Settings
+
+```yaml
+simulation:
+  enabled: false              # Set true or use SIMULATE=true env var
+  connector_count: 4          # Number of simulated wall connectors
+  scenario_interval_s: 60     # Seconds between scenario transitions per connector
+  fault_probability: 0.15     # Probability of fault/anomaly scenarios (0.0–1.0)
+```
+
+**Scenarios** the simulator cycles through:
+| Scenario | Description |
+|---|---|
+| `idle` | No vehicle connected |
+| `vehicle_connected` | Vehicle plugged in, not yet charging |
+| `charging` | Active charge session with current ramp-up |
+| `charging_reduced` | Thermal throttling, reduced current |
+| `over_temperature` | PCB/handle temp exceeding warning thresholds |
+| `grid_anomaly` | Voltage/frequency outside normal range |
+| `fault` | EVSE fault state |
+| `offline` | Connector unreachable (simulates network loss) |
+
+Each connector independently transitions between scenarios, so over time the dashboard will show a realistic mix of states and the alert table will populate with triggered alerts.
 
 ## Setting Up Telegram
 

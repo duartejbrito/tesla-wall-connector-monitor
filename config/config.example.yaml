@@ -49,3 +49,10 @@ telegram:
 dashboard:
   enabled: true
   port: 3000
+
+# Simulation mode — generates fake connector data for testing/demos
+simulation:
+  enabled: false              # Set true (or use SIMULATE=true env var) to enable
+  connector_count: 4          # Number of simulated wall connectors
+  scenario_interval_s: 60     # Seconds between scenario transitions per connector
+  fault_probability: 0.15     # Probability of fault/anomaly scenarios (0-1)

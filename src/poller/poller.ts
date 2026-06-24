@@ -5,6 +5,7 @@ import { TwcFullStatus } from '../types/twc';
 import { AlertEngine } from '../alerts/engine';
 import { Alert } from '../alerts/types';
 import { AppConfig, WallConnectorConfig } from '../config/loader';
+import { Simulator } from '../simulator';
 
 const logger = pino({ name: 'poller' });
 
@@ -16,17 +17,25 @@ export class Poller {
   private config: AppConfig;
   private onAlerts: (alerts: Alert[]) => void;
   private task: cron.ScheduledTask | null = null;
+  private simulator: Simulator | null = null;
 
   constructor(config: AppConfig, onAlerts: (alerts: Alert[]) => void) {
     this.config = config;
     this.onAlerts = onAlerts;
     this.alertEngine = new AlertEngine(config.alerts.cooldown_minutes);
 
-    for (const wc of config.wall_connectors.filter(w => w.enabled)) {
-      this.clients.set(wc.host, new TwcClient(wc.name, wc.host, config.polling.timeout_ms));
+    if (config.simulation.enabled) {
+      this.simulator = new Simulator(config.simulation);
+      // Override wall_connectors with simulated ones
+      const simConfigs = this.simulator.getConnectorConfigs();
+      this.config = { ...config, wall_connectors: simConfigs };
+      logger.info({ deviceCount: simConfigs.length }, 'Poller initialized in SIMULATION mode');
+    } else {
+      for (const wc of config.wall_connectors.filter(w => w.enabled)) {
+        this.clients.set(wc.host, new TwcClient(wc.name, wc.host, config.polling.timeout_ms));
+      }
+      logger.info({ deviceCount: this.clients.size }, 'Poller initialized');
     }
-
-    logger.info({ deviceCount: this.clients.size }, 'Poller initialized');
   }
 
   async pollAll(): Promise<void> {
@@ -50,22 +59,31 @@ export class Poller {
   }
 
   private async pollDevice(wc: WallConnectorConfig): Promise<Alert[]> {
-    const client = this.clients.get(wc.host);
-    if (!client) return [];
+    let current: TwcFullStatus;
+
+    if (this.simulator) {
+      // Use simulated data
+      current = this.simulator.poll(wc.host);
+    } else {
+      // Use real HTTP client
+      const client = this.clients.get(wc.host);
+      if (!client) return [];
+
+      const previous = this.currentStates.get(wc.host) || null;
+      const pollResult = await client.pollAll();
+
+      current = {
+        vitals: pollResult.vitals,
+        lifetime: pollResult.lifetime,
+        wifi: pollResult.wifi,
+        version: pollResult.version,
+        online: pollResult.online,
+        lastSeen: pollResult.online ? new Date() : (previous?.lastSeen || null),
+        consecutiveMisses: pollResult.online ? 0 : (previous?.consecutiveMisses || 0) + 1,
+      };
+    }
 
     const previous = this.currentStates.get(wc.host) || null;
-    const pollResult = await client.pollAll();
-
-    const current: TwcFullStatus = {
-      vitals: pollResult.vitals,
-      lifetime: pollResult.lifetime,
-      wifi: pollResult.wifi,
-      version: pollResult.version,
-      online: pollResult.online,
-      lastSeen: pollResult.online ? new Date() : (previous?.lastSeen || null),
-      consecutiveMisses: pollResult.online ? 0 : (previous?.consecutiveMisses || 0) + 1,
-    };
-
     this.previousStates.set(wc.host, previous || current);
     this.currentStates.set(wc.host, current);
 

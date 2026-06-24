@@ -41,6 +41,13 @@ const TelegramConfigSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
+const SimulationConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  connector_count: z.number().int().min(1).default(4),
+  scenario_interval_s: z.number().default(60),
+  fault_probability: z.number().min(0).max(1).default(0.15),
+});
+
 const DashboardConfigSchema = z.object({
   enabled: z.boolean().default(true),
   port: z.number().default(3000),
@@ -53,18 +60,23 @@ const PollingConfigSchema = z.object({
 
 const AppConfigSchema = z.object({
   polling: PollingConfigSchema.default({}),
-  wall_connectors: z.array(WallConnectorSchema).min(1),
+  wall_connectors: z.array(WallConnectorSchema).default([]),
   alerts: AlertsSchema.default({}),
   notification_groups: z.array(NotificationGroupSchema).default([]),
   whatsapp: WhatsAppConfigSchema.default({}),
   telegram: TelegramConfigSchema.default({}),
   dashboard: DashboardConfigSchema.default({}),
-});
+  simulation: SimulationConfigSchema.default({}),
+}).refine(
+  (data) => data.simulation.enabled || data.wall_connectors.length > 0,
+  { message: 'At least one wall_connector is required when simulation is disabled', path: ['wall_connectors'] },
+);
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
 export type WallConnectorConfig = z.infer<typeof WallConnectorSchema>;
 export type AlertsConfig = z.infer<typeof AlertsSchema>;
 export type NotificationGroupConfig = z.infer<typeof NotificationGroupSchema>;
+export type SimulationConfig = z.infer<typeof SimulationConfigSchema>;
 
 function interpolateEnvVars(text: string): string {
   return text.replace(/\$\{(\w+)\}/g, (_, varName) => {
@@ -94,9 +106,16 @@ export function loadConfig(configPath?: string): AppConfig {
   }
 
   const config = result.data;
+
+  // Allow SIMULATE env var to override config
+  if (process.env.SIMULATE === 'true' || process.env.SIMULATE === '1') {
+    config.simulation.enabled = true;
+    logger.info('Simulation mode enabled via SIMULATE env var');
+  }
+
   const enabledConnectors = config.wall_connectors.filter(wc => wc.enabled);
   logger.info(
-    { total: config.wall_connectors.length, enabled: enabledConnectors.length },
+    { total: config.wall_connectors.length, enabled: enabledConnectors.length, simulation: config.simulation.enabled },
     'Configuration loaded',
   );
 
