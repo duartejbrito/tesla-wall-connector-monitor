@@ -1,0 +1,16 @@
+services:
+  twc-monitor:
+    build: .
+    container_name: twc-monitor
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data                   # SQLite DB persistence
+      - ./config/config.yaml:/app/config/config.yaml:ro  # Config file
+    environment:
+      - CONFIG_PATH=/app/config/config.yaml
+      - LOG_LEVEL=info
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    env_file:
+      - .env

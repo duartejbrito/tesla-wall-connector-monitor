@@ -1,0 +1,51 @@
+# Tesla Wall Connector Monitor Configuration
+
+polling:
+  interval_seconds: 30        # How often to poll each wall connector
+  timeout_ms: 5000             # HTTP request timeout per device
+
+wall_connectors:
+  - name: "Garage Bay 1"
+    host: "192.168.1.100"      # IP address of the wall connector
+    enabled: true
+  - name: "Garage Bay 2"
+    host: "192.168.1.101"
+    enabled: true
+  - name: "Parking Lot A"
+    host: "192.168.1.102"
+    enabled: false             # Disabled — won't be polled
+
+alerts:
+  temperature_warning_c: 70    # Warn when PCB/handle temp exceeds this
+  temperature_critical_c: 85   # Critical alert threshold
+  max_power_kw: 11.5           # Warn when power draw exceeds this
+  max_session_energy_kwh: 100  # Warn when a single session exceeds this
+  grid_voltage_range: [210, 250]       # Normal grid voltage range (V)
+  grid_frequency_range: [49.5, 50.5]   # Normal grid frequency range (Hz)
+  offline_after_misses: 3      # Mark offline after N consecutive poll failures
+  cooldown_minutes: 15         # Don't re-send same alert type within this window
+
+notification_groups:
+  - name: "Maintenance Team"
+    channel: "telegram"
+    bot_token: "${TELEGRAM_BOT_TOKEN}"   # Env variable interpolation
+    chat_id: "-1001234567890"
+    alerts: ["device_offline", "charging_fault", "over_temperature", "grid_anomaly"]
+    severity_filter: "warning"           # Only warning and critical
+
+  - name: "Fleet Managers"
+    channel: "whatsapp"
+    group_id: "120363XXXXX@g.us"         # WhatsApp group ID
+    alerts: ["all"]                      # Receive all alert types
+    severity_filter: "info"              # Everything including info
+
+whatsapp:
+  enabled: true
+  auth_data_path: "./data/whatsapp-auth"
+
+telegram:
+  enabled: true
+
+dashboard:
+  enabled: true
+  port: 3000
