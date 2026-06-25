@@ -4,3 +4,5 @@ data/
 .env
 config/config.yaml
 *.js.map
+dashboard-ui/dist/
+dashboard-ui/node_modules/

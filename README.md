@@ -2,16 +2,40 @@
 
 Monitor a fleet of Tesla Wall Connectors (Gen 3) and receive alerts via **WhatsApp** and/or **Telegram**.
 
+![Dashboard](docs/dashboard-screenshot.png)
+
 ## Features
 
 - 🔌 **Fleet Monitoring** — Poll multiple Wall Connectors via local REST API
 - 🚨 **9 Alert Types** — Offline, faults, temperature, power, charging events, grid anomalies
 - 📱 **WhatsApp Notifications** — Via whatsapp-web.js (free, requires QR scan)
 - 📬 **Telegram Notifications** — Via official Bot API (free, reliable)
-- 📊 **Web Dashboard** — Real-time fleet status at `http://localhost:3000`
+- 📊 **Modern Web Dashboard** — Real-time fleet status with dark theme UI at `http://localhost:3000`
 - 🗄️ **Alert History** — SQLite database with full alert and notification log
 - 🐳 **Docker Ready** — docker-compose with persistent volumes
 - 🧪 **Simulation Mode** — Test the dashboard and alerts without real hardware
+
+## Dashboard
+
+The dashboard is a modern React SPA with a dark "Tesla-inspired" theme, built with:
+
+- **React 18** + **TypeScript** — Modular component architecture
+- **Tailwind CSS** — Responsive mobile-first design with glassmorphism cards
+- **Recharts** — Power history area charts
+- **Lucide React** — Crisp lightweight icons
+
+### Dashboard Sections
+
+| Section | Description |
+|---|---|
+| **Header** | Connection health (WiFi signal/IP), device uptime, animated state badge (IDLE / CHARGING / FAULT) |
+| **Fleet Selector** | Card grid to switch between multiple connectors (auto-hidden for single device setups) |
+| **Power Delivery** | Real-time kW readout with SVG ring gauge, per-phase voltage/current (L1, L2, L3) |
+| **Power History** | Area chart showing power delivery over the last ~5 minutes |
+| **Thermal & Health** | Handle, MCU, PCBA temperatures + input voltage with conditional color coding (green/amber/red) |
+| **Session & Lifetime** | Session energy (kWh), estimated range added (km), duration, lifetime energy (MWh) |
+| **Recent Alerts** | Live alert feed with severity badges |
+| **Alert Summary (24h)** | Aggregated alert counts by type and severity over the last 24 hours |
 
 ## Quick Start
 
@@ -38,11 +62,24 @@ docker compose up -d
 
 ```bash
 npm install
+cd dashboard-ui && npm install && cd ..
 npm run build
 npm start
 ```
 
-### 4. Run in Simulation Mode (No Hardware Needed)
+### 4. Development with Hot Reload
+
+```bash
+# Terminal 1 — Backend
+npm run dev
+
+# Terminal 2 — Frontend (with API proxy to backend)
+npm run dev:ui
+```
+
+The frontend dev server runs on `http://localhost:5173` with hot reload and proxies API calls to the backend on port 3000.
+
+### 5. Run in Simulation Mode (No Hardware Needed)
 
 Simulation mode generates realistic fake connector data so you can test the dashboard, alerts, and notifications without physical Wall Connectors.
 
@@ -63,8 +100,30 @@ $env:SIMULATE="true"; npm run dev
 
 The simulator creates 4 virtual connectors (configurable) that cycle through states — idle, connected, charging, faults, offline — generating alerts as they transition. Open `http://localhost:3000` to see the dashboard in action.
 
-![Simulation Mode Dashboard](docs/simulation-dashboard.png)
-*Dashboard running in simulation mode — 4 virtual connectors with live state transitions and alerts.*
+## Project Structure
+
+```
+├── src/                    # Backend (Node.js + Express + TypeScript)
+│   ├── index.ts            # Entry point
+│   ├── dashboard/          # Express server, API endpoints, static file serving
+│   ├── poller/             # TWC polling client and scheduler
+│   ├── alerts/             # Alert detection engine
+│   ├── notifications/      # WhatsApp & Telegram dispatchers
+│   ├── storage/            # SQLite database layer
+│   ├── simulator/          # Simulation mode (fake connector data)
+│   └── types/              # TypeScript type definitions
+├── dashboard-ui/           # Frontend (React + Vite + Tailwind CSS)
+│   ├── src/
+│   │   ├── App.tsx         # Main layout with device selection
+│   │   ├── components/     # Header, HeroMetrics, ThermalGrid, etc.
+│   │   ├── hooks/          # usePolling (auto-fetch every 5s)
+│   │   └── lib/            # Types, utilities, formatters
+│   ├── tailwind.config.js  # Custom dark theme colors & animations
+│   └── vite.config.ts      # Vite config with API proxy
+├── config/                 # YAML configuration
+├── data/                   # SQLite database (auto-created)
+└── docs/                   # Documentation & screenshots
+```
 
 ## Configuration
 
@@ -180,11 +239,13 @@ Each connector independently transitions between scenarios, so over time the das
 
 | Endpoint | Description |
 |---|---|
-| `GET /` | Web dashboard |
-| `GET /api/devices` | Device states (JSON) |
+| `GET /` | Web dashboard (React SPA) |
+| `GET /api/devices` | Device states including vitals, lifetime, wifi data (JSON) |
 | `GET /api/alerts?limit=50` | Recent alerts (JSON) |
-| `GET /api/stats?hours=24` | Alert statistics (JSON) |
-| `GET /api/health` | Health check |
+| `GET /api/stats?hours=24` | Alert statistics grouped by type/severity (JSON) |
+| `GET /api/power-history` | Power readings ring buffer, all devices (JSON) |
+| `GET /api/power-history?host=<ip>` | Power readings for a specific device (JSON) |
+| `GET /api/health` | Health check with uptime |
 
 ## Requirements
 

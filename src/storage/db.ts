@@ -47,6 +47,7 @@ export class Database {
         vitals_json TEXT,
         lifetime_json TEXT,
         version_json TEXT,
+        wifi_json TEXT,
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
@@ -55,6 +56,14 @@ export class Database {
       CREATE INDEX IF NOT EXISTS idx_alerts_device ON alerts(device_host);
       CREATE INDEX IF NOT EXISTS idx_notification_log_alert ON notification_log(alert_id);
     `);
+
+    // Add wifi_json column if missing (migration for existing databases)
+    try {
+      this.db.exec(`ALTER TABLE device_state ADD COLUMN wifi_json TEXT`);
+    } catch {
+      // Column already exists
+    }
+
     logger.debug('Database migration complete');
   }
 
@@ -85,8 +94,8 @@ export class Database {
 
   updateDeviceState(host: string, name: string, online: boolean, state: any): void {
     const stmt = this.db.prepare(`
-      INSERT INTO device_state (host, name, online, last_seen, evse_state, vitals_json, lifetime_json, version_json, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO device_state (host, name, online, last_seen, evse_state, vitals_json, lifetime_json, version_json, wifi_json, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(host) DO UPDATE SET
         name = excluded.name,
         online = excluded.online,
@@ -95,6 +104,7 @@ export class Database {
         vitals_json = excluded.vitals_json,
         lifetime_json = excluded.lifetime_json,
         version_json = excluded.version_json,
+        wifi_json = excluded.wifi_json,
         updated_at = datetime('now')
     `);
     stmt.run(
@@ -106,6 +116,7 @@ export class Database {
       state.vitals ? JSON.stringify(state.vitals) : null,
       state.lifetime ? JSON.stringify(state.lifetime) : null,
       state.version ? JSON.stringify(state.version) : null,
+      state.wifi ? JSON.stringify(state.wifi) : null,
     );
   }
 

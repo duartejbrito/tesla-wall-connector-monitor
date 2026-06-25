@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-900 text-gray-100 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface-700/50 backdrop-blur-sm border border-surface-600/50 rounded-xl;
+  }
+
+  .metric-value {
+    @apply font-mono font-semibold tracking-tight transition-all duration-300;
+  }
+
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .status-dot-online {
+    @apply bg-accent-green shadow-[0_0_8px_rgba(16,185,129,0.6)];
+  }
+
+  .status-dot-offline {
+    @apply bg-accent-red shadow-[0_0_8px_rgba(239,68,68,0.6)];
+  }
+}
+
+@layer utilities {
+  .text-glow-green {
+    text-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  }
+
+  .text-glow-blue {
+    text-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+  }
+}

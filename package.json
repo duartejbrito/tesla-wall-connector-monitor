@@ -4,10 +4,13 @@
   "description": "Monitor Tesla Wall Connectors and send alerts to WhatsApp/Telegram groups",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:ui",
+    "build:backend": "tsc",
+    "build:ui": "cd dashboard-ui && npm run build",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "dev:sim": "ts-node -e \"process.env.SIMULATE='true'; require('./src/index.ts')\""
+    "dev:sim": "ts-node -e \"process.env.SIMULATE='true'; require('./src/index.ts')\"",
+    "dev:ui": "cd dashboard-ui && npm run dev"
   },
   "keywords": ["tesla", "wall-connector", "monitor", "whatsapp", "telegram"],
   "license": "MIT",
